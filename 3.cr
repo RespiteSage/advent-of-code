@@ -1,8 +1,9 @@
 require "string_scanner"
+require "math"
 
 wires = File.read_lines("3.in").map(&.split ",")
 
-# --- Part 1 ---
+# Solution
 
 record Point, x : Int32, y : Int32 do
   def self.origin
@@ -19,22 +20,34 @@ record Point, x : Int32, y : Int32 do
       y: self.y + y
     )
   end
+
+  def each_x_step_to(other_point)
+    raise "Invalid use of each_x_step_to!" if (y != other_point.y)
+
+    if self.x < other_point.x
+      ((self.x + 1)..other_point.x).each { |x| yield Point.new x: x, y: self.y }
+    elsif self.x > other_point.x
+      (other_point.x..(self.x - 1)).reverse_each { |x| yield Point.new x: x, y: self.y }
+    end
+  end
+
+  def each_y_step_to(other_point)
+    raise "Invalid use of each_y_step_to!" if (x != other_point.x)
+
+    if self.y < other_point.y
+      ((self.y + 1)..other_point.y).each { |y| yield Point.new x: self.x, y: y }
+    elsif self.y > other_point.y
+      (other_point.y..(self.y - 1)).reverse_each { |y| yield Point.new x: self.x, y: y }
+    end
+  end
 end
 
-enum Direction
-  UP
-  DOWN
-  LEFT
-  RIGHT
+enum Axis
+  X
+  Y
 end
 
-@[Flags]
-enum Wires
-  FIRST
-  SECOND
-end
-
-record WireStep, length : Int32, direction : Direction do
+record WireStep, delta : Int32, axis : Axis do
   def self.new(encoded_string)
     scanner = StringScanner.new encoded_string
     direction = scanner.scan(/[UDLR]/).not_nil!
@@ -42,52 +55,51 @@ record WireStep, length : Int32, direction : Direction do
 
     case direction
     when "U"
-      direction = Direction::UP
+      axis = Axis::Y
+      sign = 1
     when "D"
-      direction = Direction::DOWN
+      axis = Axis::Y
+      sign = -1
     when "L"
-      direction = Direction::LEFT
+      axis = Axis::X
+      sign = -1
     when "R"
-      direction = Direction::RIGHT
+      axis = Axis::X
+      sign = 1
     else
       raise "Oops!"
     end
 
-    WireStep.new length: length, direction: direction
+    WireStep.new delta: length * sign, axis: axis
   end
 end
 
-alias WireMap = Set(Point)
+alias WireMap = Hash(Point, Int32)
 
 def build_wiremap(wire_path)
   wire_map = WireMap.new
   current_point = Point.origin
+  step_count = 0
 
   wire_path.each do |wire_step|
-    case wire_step.direction
-    when Direction::UP
-      next_point = current_point.translate y: wire_step.length
+    case wire_step.axis
+    when Axis::X
+      next_point = current_point.translate x: wire_step.delta
 
-      ((current_point.y + 1)..next_point.y).each do |y|
-        wire_map << Point.new current_point.x, y
+      current_point.each_x_step_to(next_point) do |point|
+        step_count += 1
+        unless wire_map.has_key? point
+          wire_map[point] = step_count
+        end
       end
-    when Direction::DOWN
-      next_point = current_point.translate y: -wire_step.length
+    when Axis::Y
+      next_point = current_point.translate y: wire_step.delta
 
-      (next_point.y...current_point.y).each do |y|
-        wire_map << Point.new current_point.x, y
-      end
-    when Direction::LEFT
-      next_point = current_point.translate x: -wire_step.length
-
-      (next_point.x...current_point.x).each do |x|
-        wire_map << Point.new x, current_point.y
-      end
-    when Direction::RIGHT
-      next_point = current_point.translate x: wire_step.length
-
-      ((current_point.x + 1)..next_point.x).each do |x|
-        wire_map << Point.new x, current_point.y
+      current_point.each_y_step_to(next_point) do |point|
+        step_count += 1
+        unless wire_map.has_key? point
+          wire_map[point] = step_count
+        end
       end
     else
       raise "Unreachable"
@@ -103,9 +115,19 @@ wire_paths = wires.map(&.map { |step| WireStep.new step })
 first_wire_map = build_wiremap(wire_paths[0])
 second_wire_map = build_wiremap(wire_paths[1])
 
-intersections = first_wire_map & second_wire_map
+intersection_points = first_wire_map.keys & second_wire_map.keys
 
-closest_intersection = intersections.min_by { |point| point.manhattan_distance Point.origin }
+# --- Part 1 ---
+
+closest_intersection = intersection_points.min_by { |point| point.manhattan_distance Point.origin }
 
 p! closest_intersection
 p! closest_intersection.manhattan_distance Point.origin
+
+# --- Part 2 ---
+
+closest_combined_distance = intersection_points.min_of? do |point|
+  first_wire_map[point] + second_wire_map[point]
+end
+
+p! closest_combined_distance
