@@ -1,6 +1,8 @@
 require "file"
 
-input = File.read_lines("1.in").map { |line| line.to_i32 }
+input = File.read_lines("1.in").map &.to_i32
+
+# --- Part 1 ---
 
 combos = input.combinations(2)
 
@@ -15,6 +17,8 @@ end
 summing_combo = summing_combos.first
 
 p! result = summing_combo.product
+
+# --- Part 2 ---
 
 combos = input.combinations(3)
 
