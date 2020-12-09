@@ -13,21 +13,16 @@ p! first_result
 # --- Part 2 ---
 
 minmax = {-1, -1}
-index = 0
-until index == input.size || minmax != {-1, -1}
-  run = [input[index]]
-
-  last_index = index + 1
-  while last_index < input.size && run.sum < first_result
-    run << input[last_index]
-    last_index += 1
-  end
+input.each_index.find do |index|
+  sum = 0
+  run = input[index..].take_while { |value| (sum += value) <= first_result }
 
   if run.sum == first_result
     minmax = run.minmax
+    true
+  else
+    false
   end
-
-  index += 1
 end
 
 second_result = minmax.sum
