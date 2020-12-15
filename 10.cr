@@ -24,35 +24,29 @@ p! first_result
 
 # --- Part 2 ---
 
-class AdapterNode
+class AdapterPathCounter
   getter joltage : Int32
-  getter possible_output_indices = Array(Int32).new
+  property paths_to_adapter : Int64 = 0i64
 
   def initialize(@joltage)
   end
+end
 
-  def count_paths_to_joltage(desired_joltage)
-    if joltage == desired_joltage
-      return 1_u64
-    end
+adapters = input.map { |joltage| AdapterPathCounter.new joltage }
 
-    possible_outputs.sum(0_u64) { |node| node.count_paths_to_joltage(desired_joltage) }
+adapters.first.paths_to_adapter = 1
+
+adapters.each_with_index do |adapter, index|
+  next_adapter_index = index
+  next_adapter = adapter
+  while (next_adapter_index += 1) < adapters.size && (next_adapter = adapters[next_adapter_index]).joltage <= (adapter.joltage + 3)
+    next_adapter.paths_to_adapter += adapter.paths_to_adapter
   end
 end
 
-nodes = input.map { |joltage| AdapterNode.new joltage }
+adapter = adapters.first
+device = adapters.last
 
-nodes.each_with_index do |node, index|
-  next_node_index = index
-  next_node = node
-  while (next_node_index += 1) < nodes.size && (next_node = nodes[next_node_index]).joltage <= (node.joltage + 3)
-    node.possible_outputs << next_node
-  end
-end
-
-adapter = nodes.first
-device = nodes.last
-
-second_result = adapter.count_paths_to_joltage device.joltage
+second_result = device.paths_to_adapter
 
 p! second_result
